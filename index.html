@@ -8,7 +8,18 @@
 </head>
 <body style="font-family: sans-serif; padding: 20px;">
 
-   <div id="game-screen" style="display: none;">
+    <div id="setup-screen">
+        <h2 style="color: #4a4e69; text-align: center;">Game Setup</h2>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Subreddit</label>
+            <input type="text" id="subreddit-input" placeholder="e.g., luxurycars, movieposters" style="width: 100%; max-width: 400px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 16px;">
+        </div>
+
+        <button id="start-btn" style="width: 100%; max-width: 420px; padding: 15px; font-size: 18px; font-weight: bold; background-color: #4a4e69; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px;">Start Playing</button>
+    </div>
+
+    <div id="game-screen" style="display: none;">
         
         <header id="scoreboard" style="margin-bottom: 20px; font-size: 28px; font-weight: bold; text-align: center;">
             <div>Points: <span id="score-val" style="color: #4a4e69;">10</span></div>
