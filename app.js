@@ -1,11 +1,10 @@
 // --- STATE VARIABLES ---
-let baseline = 10;
-let trayPoints = 0;
+let score = 10;
 let deck = []; 
 let currentCardIndex = 0;
-let currentSub = ""; // We need to remember the subreddit to fetch more later
+let currentSub = ""; 
+let isFetching = false; // Prevents the game from spamming the API
 
-// --- THE NEW CHOICES (Added Skip!) ---
 const choices = [
     { text: "Skip (0)", cost: 0 },
     { text: "It's okay (+1)", cost: 1 },
@@ -23,17 +22,15 @@ const subredditInput = document.getElementById("subreddit-input");
 const titleElement = document.getElementById("card-title");
 const imageContainer = document.getElementById("card-image-placeholder");
 const optionsContainer = document.getElementById("options-container");
-const baselineSpan = document.getElementById("baseline-val");
-const traySpan = document.getElementById("tray-val");
+const scoreSpan = document.getElementById("score-val"); // Merged to a single counter
 const cardContainer = document.getElementById("card");
 
-// --- API FETCH & ENDLESS LOOP ---
-
-// We added an 'isAppending' flag. If true, it adds to the deck instead of starting over.
-async function fetchRedditData(subredditQuery, isAppending = false) {
+// --- API FETCH & PRE-FETCH LOGIC ---
+async function fetchImages(isAppending = false) {
+    isFetching = true;
+    
     if (!isAppending) {
-        currentSub = subredditQuery.split(',')[0].trim();
-        if (!currentSub) currentSub = "pics"; 
+        currentSub = subredditInput.value.split(',')[0].trim() || "pics";
         startBtn.innerText = "Fetching Images...";
     }
 
@@ -44,30 +41,31 @@ async function fetchRedditData(subredditQuery, isAppending = false) {
         if (json.code && !isAppending) {
             alert(`Error: ${json.message}. Try another subreddit!`);
             startBtn.innerText = "Start Playing";
+            isFetching = false;
             return;
         }
 
-        let newCards = [];
-        if (json.memes) {
-            json.memes.forEach(post => {
-                newCards.push({
-                    title: post.title.substring(0, 50) + "...", 
-                    image: post.url
-                });
-            });
-        }
+        // Clean map the JSON data
+        let newCards = (json.memes || []).map(post => ({
+            title: post.title.substring(0, 50) + "...", 
+            image: post.url
+        }));
 
         if (!isAppending) {
-            // First time starting the game
+            // First load
             deck = newCards;
             currentCardIndex = 0;
             setupScreen.style.display = "none";
             gameScreen.style.display = "block";
             renderCard();
         } else {
-            // Endless Mode: Stitch the new cards to the back of the deck
+            // Endless Pre-fetching: quietly add them to the back of the deck
             deck = deck.concat(newCards);
-            renderCard(); // Show the newly fetched card
+            
+            // Failsafe: If the player swiped so fast they actually hit the loading screen, render now
+            if (currentCardIndex >= deck.length - newCards.length) {
+                renderCard();
+            }
         }
 
     } catch (error) {
@@ -77,57 +75,41 @@ async function fetchRedditData(subredditQuery, isAppending = false) {
             startBtn.innerText = "Start Playing";
         }
     }
+    
+    isFetching = false; // Unlocks the fetcher for the next time we run low
 }
 
 // 1. Start the Game
 startBtn.addEventListener("click", () => {
-    // Reset points in case they are playing again without refreshing
-    baseline = 10;
-    trayPoints = 0;
-    baselineSpan.innerText = baseline;
-    traySpan.innerText = trayPoints;
-    
-    let query = subredditInput.value;
-    fetchRedditData(query, false);
+    score = 10;
+    scoreSpan.innerText = score;
+    fetchImages(false);
 });
 
-// 2. Process a Button Click
+// 2. Process a Button Click (Rapid Fire Math)
 function handleChoice(cost) {
-    // Only alter points if they didn't pick "Skip (0)"
-    if (cost !== 0) {
-        if (cost > 0) {
-            trayPoints += cost; 
-        } else {
-            let absoluteCost = Math.abs(cost);
-            if (trayPoints >= absoluteCost) {
-                trayPoints -= absoluteCost; 
-            } else {
-                let remainder = absoluteCost - trayPoints;
-                trayPoints = 0; 
-                baseline -= remainder; 
-            }
-        }
-    }
+    // Add the cost (negative costs will naturally subtract from the score)
+    score += cost;
+    scoreSpan.innerText = score;
 
-    baselineSpan.innerText = baseline;
-    traySpan.innerText = trayPoints;
-
-    // Check for Bankruptcy
-    if (baseline <= 0) {
+    // Check for Bankruptcy immediately
+    if (score <= 0) {
         cardContainer.innerHTML = `<h2 style="color: red; text-align: center; padding: 20px;">BANKRUPT!</h2>
-                                   <p style="text-align: center;">You spent more points than you had.</p>
-                                   <button onclick="location.reload()" style="display:block; width:100%; padding:15px; background:#4a4e69; color:white; border-radius:8px; border:none; margin-top:20px;">Try Again</button>`;
+                                   <p style="text-align: center;">You chased the high life and hit zero.</p>
+                                   <button onclick="location.reload()" style="display:block; width:100%; padding:15px; background:#4a4e69; color:white; border-radius:8px; border:none; margin-top:20px; font-size: 18px; cursor:pointer;">Play Again</button>`;
         return;
     }
 
     currentCardIndex++;
-    
-    // THE ENDLESS LOOP TRIGGER
+
+    // THE MAGIC TRICK: Pre-fetch more images when we only have 5 left!
+    if (deck.length - currentCardIndex < 5 && !isFetching) {
+        fetchImages(true); 
+    }
+
+    // Render the next card (or a failsafe loading text if they swiped faster than the API)
     if (currentCardIndex >= deck.length) {
-        // We reached the end of the current images. 
         cardContainer.innerHTML = `<h2 style="text-align: center; padding: 20px;">Loading more...</h2>`;
-        // Fetch more images and append them!
-        fetchRedditData(currentSub, true); 
     } else {
         renderCard();
     }
@@ -135,7 +117,6 @@ function handleChoice(cost) {
 
 // 3. Render the Card
 function renderCard() {
-    // Failsafe in case we try to render while waiting for the endless fetch
     if (!deck[currentCardIndex]) return; 
 
     let cardData = deck[currentCardIndex];
@@ -155,9 +136,11 @@ function renderCard() {
         btn.style.margin = "10px 0";
         btn.style.padding = "15px";
         btn.style.fontSize = "16px";
+        btn.style.fontWeight = "bold";
         btn.style.cursor = "pointer";
         btn.style.borderRadius = "8px";
-        btn.style.backgroundColor = "#f0f0f0";
+        btn.style.backgroundColor = choice.cost < 0 ? "#ffe3e3" : "#e3ffe6"; // Light red for costs, green for gains
+        if (choice.cost === 0) btn.style.backgroundColor = "#f0f0f0"; // Grey for skip
         btn.style.border = "1px solid #ccc";
         
         btn.addEventListener("click", () => {
