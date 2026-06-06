@@ -85,27 +85,49 @@ async function fetchRedditTopMonth() {
 startRedditBtn.addEventListener("click", fetchRedditTopMonth);
 
 // --- OPTION B: PLAY LOCAL CAMERA ROLL ---
+const fileCountDisplay = document.getElementById("file-count-display");
+
+// Listen for when the user actually selects files
+localUploadInput.addEventListener("change", () => {
+    const fileCount = localUploadInput.files.length;
+    
+    if (fileCount > 0) {
+        fileCountDisplay.style.display = "block";
+        fileCountDisplay.innerText = `${fileCount} photos ready to play!`;
+        
+        // Activate the start button
+        startLocalBtn.style.opacity = "1";
+        startLocalBtn.innerText = "Start Local Game";
+    } else {
+        fileCountDisplay.style.display = "none";
+        startLocalBtn.style.opacity = "0.5";
+        startLocalBtn.innerText = "Select Photos First";
+    }
+});
+
 startLocalBtn.addEventListener("click", () => {
     const files = localUploadInput.files;
     
-    if (files.length < 5) {
-        alert("Please select at least 5 photos from your device to play!");
+    // Safety check: Prevent starting if no files are chosen
+    if (files.length === 0) {
+        alert("Please tap 'Choose Files' and select some photos first!");
         return;
     }
 
     deck = [];
     
-    // Loop through the uploaded files and instantly turn them into playable game cards
+    // Loop through the uploaded files and create temporary game cards
     for (let i = 0; i < files.length; i++) {
         let file = files[i];
         deck.push({
-            title: `Local Photo ${i + 1}`, // Generic title for local files
-            image: URL.createObjectURL(file) // Magical JS function that creates a temporary instant image link
+            title: `Your Photo ${i + 1} of ${files.length}`, 
+            image: URL.createObjectURL(file) 
         });
     }
 
     startGame();
 });
+
 
 // --- CORE GAME LOOP ---
 function handleChoice(cost) {
