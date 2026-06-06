@@ -6,10 +6,10 @@ let currentCardIndex = 0;
 
 // Universal choices for every card
 const choices = [
-    { text: "It's okay (+1)", cost: 1 },
-    { text: "I want this (-2)", cost: -2 },
-    { text: "This is elite (-9)", cost: -9 },
-    { text: "My absolute favorite (-25)", cost: -25 }
+    { text: "She's okay (+1)", cost: 1 },
+    { text: "I need her (-2)", cost: -2 },
+    { text: "Elite (-9)", cost: -9 },
+    { text: "An absolute must-have (-25)", cost: -25 }
 ];
 
 // --- HTML ELEMENTS ---
