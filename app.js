@@ -1,11 +1,13 @@
 // --- STATE VARIABLES ---
 let baseline = 10;
 let trayPoints = 0;
-let deck = []; // This will now hold real Reddit posts!
+let deck = []; 
 let currentCardIndex = 0;
+let currentSub = ""; // We need to remember the subreddit to fetch more later
 
-// Universal choices for every card
+// --- THE NEW CHOICES (Added Skip!) ---
 const choices = [
+    { text: "Skip (0)", cost: 0 },
     { text: "It's okay (+1)", cost: 1 },
     { text: "I want this (-2)", cost: -2 },
     { text: "This is elite (-9)", cost: -9 },
@@ -25,98 +27,120 @@ const baselineSpan = document.getElementById("baseline-val");
 const traySpan = document.getElementById("tray-val");
 const cardContainer = document.getElementById("card");
 
-// --- REDDIT API LOGIC ---
+// --- API FETCH & ENDLESS LOOP ---
 
-async function fetchRedditData(subredditQuery) {
-    // Clean up the input
-    let sub = subredditQuery.split(',')[0].trim();
-    if (!sub) sub = "pics"; 
-    
-    startBtn.innerText = "Fetching Images...";
+// We added an 'isAppending' flag. If true, it adds to the deck instead of starting over.
+async function fetchRedditData(subredditQuery, isAppending = false) {
+    if (!isAppending) {
+        currentSub = subredditQuery.split(',')[0].trim();
+        if (!currentSub) currentSub = "pics"; 
+        startBtn.innerText = "Fetching Images...";
+    }
 
     try {
-        // THE FIX: Using a dedicated Reddit Image API to bypass CORS entirely
-        const response = await fetch(`https://meme-api.com/gimme/${sub}/30`);
+        const response = await fetch(`https://meme-api.com/gimme/${currentSub}/30`);
         const json = await response.json();
         
-        // If the API returns an error (like a misspelled subreddit)
-        if (json.code) {
+        if (json.code && !isAppending) {
             alert(`Error: ${json.message}. Try another subreddit!`);
             startBtn.innerText = "Start Playing";
             return;
         }
 
-        deck = []; 
-        
-        // This API already filters for pure images! We just loop and push.
-        json.memes.forEach(post => {
-            deck.push({
-                title: post.title.substring(0, 50) + "...", 
-                image: post.url
+        let newCards = [];
+        if (json.memes) {
+            json.memes.forEach(post => {
+                newCards.push({
+                    title: post.title.substring(0, 50) + "...", 
+                    image: post.url
+                });
             });
-        });
+        }
 
-        // Hide setup and start the game
-        setupScreen.style.display = "none";
-        gameScreen.style.display = "block";
-        renderCard();
+        if (!isAppending) {
+            // First time starting the game
+            deck = newCards;
+            currentCardIndex = 0;
+            setupScreen.style.display = "none";
+            gameScreen.style.display = "block";
+            renderCard();
+        } else {
+            // Endless Mode: Stitch the new cards to the back of the deck
+            deck = deck.concat(newCards);
+            renderCard(); // Show the newly fetched card
+        }
 
     } catch (error) {
         console.error("Fetch Error:", error); 
-        alert("Network error fetching images. Please try again.");
-        startBtn.innerText = "Start Playing";
+        if (!isAppending) {
+            alert("Network error fetching images. Please try again.");
+            startBtn.innerText = "Start Playing";
+        }
     }
 }
 
-// 1. Start the Game (Now hooked up to your input box!)
+// 1. Start the Game
 startBtn.addEventListener("click", () => {
+    // Reset points in case they are playing again without refreshing
+    baseline = 10;
+    trayPoints = 0;
+    baselineSpan.innerText = baseline;
+    traySpan.innerText = trayPoints;
+    
     let query = subredditInput.value;
-    fetchRedditData(query);
+    fetchRedditData(query, false);
 });
 
-// 2. Process a Button Click (With fixed Game Over logic)
+// 2. Process a Button Click
 function handleChoice(cost) {
-    if (cost > 0) {
-        trayPoints += cost; 
-    } else {
-        let absoluteCost = Math.abs(cost);
-        if (trayPoints >= absoluteCost) {
-            trayPoints -= absoluteCost; 
+    // Only alter points if they didn't pick "Skip (0)"
+    if (cost !== 0) {
+        if (cost > 0) {
+            trayPoints += cost; 
         } else {
-            let remainder = absoluteCost - trayPoints;
-            trayPoints = 0; 
-            baseline -= remainder; 
+            let absoluteCost = Math.abs(cost);
+            if (trayPoints >= absoluteCost) {
+                trayPoints -= absoluteCost; 
+            } else {
+                let remainder = absoluteCost - trayPoints;
+                trayPoints = 0; 
+                baseline -= remainder; 
+            }
         }
     }
 
-    // Update numbers
     baselineSpan.innerText = baseline;
     traySpan.innerText = trayPoints;
 
-    // The True Bankruptcy Fix
+    // Check for Bankruptcy
     if (baseline <= 0) {
-        // Instead of reloading, we freeze the game and show a message
         cardContainer.innerHTML = `<h2 style="color: red; text-align: center; padding: 20px;">BANKRUPT!</h2>
                                    <p style="text-align: center;">You spent more points than you had.</p>
                                    <button onclick="location.reload()" style="display:block; width:100%; padding:15px; background:#4a4e69; color:white; border-radius:8px; border:none; margin-top:20px;">Try Again</button>`;
         return;
     }
 
-    // Move to next card
     currentCardIndex++;
-    if (currentCardIndex < deck.length) {
-        renderCard();
+    
+    // THE ENDLESS LOOP TRIGGER
+    if (currentCardIndex >= deck.length) {
+        // We reached the end of the current images. 
+        cardContainer.innerHTML = `<h2 style="text-align: center; padding: 20px;">Loading more...</h2>`;
+        // Fetch more images and append them!
+        fetchRedditData(currentSub, true); 
     } else {
-        cardContainer.innerHTML = `<h2>Deck Complete!</h2><p>You survived with ${baseline + trayPoints} total points.</p>`;
+        renderCard();
     }
 }
 
 // 3. Render the Card
 function renderCard() {
+    // Failsafe in case we try to render while waiting for the endless fetch
+    if (!deck[currentCardIndex]) return; 
+
     let cardData = deck[currentCardIndex];
     titleElement.innerText = cardData.title;
 
-    // Render the real Reddit image
     imageContainer.innerHTML = `<img src="${cardData.image}" style="width: 100%; max-width: 400px; height: 300px; object-fit: cover; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">`;
 
     optionsContainer.innerHTML = ""; 
