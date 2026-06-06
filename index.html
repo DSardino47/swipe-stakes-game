@@ -20,9 +20,13 @@
 
         <div style="background: #f4f4f9; padding: 20px; border-radius: 12px; border: 1px solid #ddd;">
             <h3 style="margin-top: 0; color: #2a9d8f;">📸 Play Your Camera Roll</h3>
-            <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Select photos directly from your phone. 100% private, instant loading.</p>
-            <input type="file" id="local-upload" accept="image/*" multiple style="width: 100%; margin-bottom: 15px; font-size: 14px;">
-            <button id="start-local-btn" style="width: 100%; padding: 15px; font-size: 16px; font-weight: bold; background-color: #2a9d8f; color: white; border: none; border-radius: 8px; cursor: pointer;">Start Local Game</button>
+            <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Select up to 100 photos directly from your device.</p>
+            
+            <input type="file" id="local-upload" accept="image/*" multiple style="width: 100%; margin-bottom: 10px; font-size: 14px; padding: 10px; background: #fff; border-radius: 5px;">
+            
+            <p id="file-count-display" style="font-weight: bold; color: #2a9d8f; text-align: center; margin-bottom: 10px; display: none;">0 photos ready!</p>
+            
+            <button id="start-local-btn" style="width: 100%; padding: 15px; font-size: 16px; font-weight: bold; background-color: #2a9d8f; color: white; border: none; border-radius: 8px; cursor: pointer; opacity: 0.5;">Select Photos First</button>
         </div>
     </div>
 
