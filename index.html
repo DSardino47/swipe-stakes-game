@@ -8,33 +8,25 @@
 </head>
 <body style="font-family: sans-serif; padding: 20px;">
 
-    <div id="setup-screen">
-        <h2 style="color: #4a4e69; text-align: center;">Game Setup</h2>
+  <div id="setup-screen" style="max-width: 400px; margin: 0 auto;">
+        <h2 style="color: #4a4e69; text-align: center;">Choose Your Deck</h2>
         
-        <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Subreddit</label>
-            <input type="text" id="subreddit-input" placeholder="e.g., luxurycars, movieposters" style="width: 100%; max-width: 400px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 16px;">
+        <div style="background: #f4f4f9; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #ddd;">
+            <h3 style="margin-top: 0; color: #4a4e69;">🌐 Play a Subreddit</h3>
+            <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Fetches the Top 50 posts of the month.</p>
+            <input type="text" id="subreddit-input" placeholder="e.g., luxurycars" style="width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px;">
+            <button id="start-reddit-btn" style="width: 100%; padding: 15px; font-size: 16px; font-weight: bold; background-color: #4a4e69; color: white; border: none; border-radius: 8px; cursor: pointer;">Fetch Reddit</button>
         </div>
 
-        <button id="start-btn" style="width: 100%; max-width: 420px; padding: 15px; font-size: 18px; font-weight: bold; background-color: #4a4e69; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px;">Start Playing</button>
+        <div style="background: #f4f4f9; padding: 20px; border-radius: 12px; border: 1px solid #ddd;">
+            <h3 style="margin-top: 0; color: #2a9d8f;">📸 Play Your Camera Roll</h3>
+            <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Select photos directly from your phone. 100% private, instant loading.</p>
+            <input type="file" id="local-upload" accept="image/*" multiple style="width: 100%; margin-bottom: 15px; font-size: 14px;">
+            <button id="start-local-btn" style="width: 100%; padding: 15px; font-size: 16px; font-weight: bold; background-color: #2a9d8f; color: white; border: none; border-radius: 8px; cursor: pointer;">Start Local Game</button>
+        </div>
     </div>
 
-    <div id="game-screen" style="display: none;">
-        
-        <header id="scoreboard" style="margin-bottom: 20px; font-size: 28px; font-weight: bold; text-align: center;">
-            <div>Points: <span id="score-val" style="color: #4a4e69;">10</span></div>
-        </header>
-
-        <main id="game-container">
-            <div id="card">
-                <div id="card-image-placeholder"></div>
-                <h2 id="card-title" style="text-align: center; font-size: 18px; margin: 10px 0;">Card Title</h2>
-                <div id="options-container">
-                    </div>
-            </div>
-        </main>
-    </div>
-
+    
     <script src="app.js"></script>
 </body>
 </html>
