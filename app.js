@@ -6,10 +6,10 @@ let currentCardIndex = 0;
 
 // Universal choices for every card
 const choices = [
-    { text: "She's okay (+1)", cost: 1 },
-    { text: "I need her (-2)", cost: -2 },
-    { text: "Elite (-9)", cost: -9 },
-    { text: "An absolute must-have (-25)", cost: -25 }
+    { text: "It's okay (+1)", cost: 1 },
+    { text: "I want this (-2)", cost: -2 },
+    { text: "This is elite (-9)", cost: -9 },
+    { text: "My absolute favorite (-25)", cost: -25 }
 ];
 
 // --- HTML ELEMENTS ---
@@ -28,49 +28,42 @@ const cardContainer = document.getElementById("card");
 // --- REDDIT API LOGIC ---
 
 async function fetchRedditData(subredditQuery) {
+    // Clean up the input
     let sub = subredditQuery.split(',')[0].trim();
     if (!sub) sub = "pics"; 
     
-    startBtn.innerText = "Fetching...";
+    startBtn.innerText = "Fetching Images...";
 
     try {
-        // The Alternative Proxy Fix
-const targetUrl = encodeURIComponent(`https://www.reddit.com/r/${sub}/hot.json?limit=50`);
-const proxyUrl = `https://corsproxy.io/?${targetUrl}`;
+        // THE FIX: Using a dedicated Reddit Image API to bypass CORS entirely
+        const response = await fetch(`https://meme-api.com/gimme/${sub}/30`);
+        const json = await response.json();
         
-        const response = await fetch(proxyUrl);
-        const proxyData = await response.json();
-        
-        // The proxy returns the Reddit data inside a string, so we parse it
-        const json = JSON.parse(proxyData.contents);
-        const posts = json.data.children;
-        
-        deck = []; 
-        
-        posts.forEach(post => {
-            let url = post.data.url;
-            // Grab jpgs, pngs, and gifs!
-            if (url && (url.match(/\.(jpeg|jpg|gif|png)$/) != null)) {
-                deck.push({
-                    title: post.data.title.substring(0, 50) + "...", 
-                    image: url
-                });
-            }
-        });
-
-        if (deck.length === 0) {
-            alert("No images found! Try 'luxurycars' or 'movieposters'.");
+        // If the API returns an error (like a misspelled subreddit)
+        if (json.code) {
+            alert(`Error: ${json.message}. Try another subreddit!`);
             startBtn.innerText = "Start Playing";
             return;
         }
 
+        deck = []; 
+        
+        // This API already filters for pure images! We just loop and push.
+        json.memes.forEach(post => {
+            deck.push({
+                title: post.title.substring(0, 50) + "...", 
+                image: post.url
+            });
+        });
+
+        // Hide setup and start the game
         setupScreen.style.display = "none";
         gameScreen.style.display = "block";
         renderCard();
 
     } catch (error) {
-        console.error(error); // This prints the exact error to your developer console
-        alert("Still having trouble reaching the API. Try refreshing.");
+        console.error("Fetch Error:", error); 
+        alert("Network error fetching images. Please try again.");
         startBtn.innerText = "Start Playing";
     }
 }
