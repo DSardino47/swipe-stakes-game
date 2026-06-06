@@ -3,34 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Swipe Stakes Prototype</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Swipe Stakes - Local Test</title>
 </head>
-<body style="font-family: sans-serif; padding: 20px;">
+<body style="font-family: sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px;">
 
-  <div id="setup-screen" style="max-width: 400px; margin: 0 auto;">
-        <h2 style="color: #4a4e69; text-align: center;">Choose Your Deck</h2>
+    <div id="setup-screen" style="max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        <h2 style="color: #333; text-align: center; margin-top: 0;">Play Your Camera Roll</h2>
+        <p style="color: #666; font-size: 14px; text-align: center;">Select 5+ photos to start the game.</p>
         
-        <div style="background: #f4f4f9; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #ddd;">
-            <h3 style="margin-top: 0; color: #4a4e69;">🌐 Play a Subreddit</h3>
-            <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Fetches the Top 50 posts of the month.</p>
-            <input type="text" id="subreddit-input" placeholder="e.g., luxurycars" style="width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px;">
-            <button id="start-reddit-btn" style="width: 100%; padding: 15px; font-size: 16px; font-weight: bold; background-color: #4a4e69; color: white; border: none; border-radius: 8px; cursor: pointer;">Fetch Reddit</button>
-        </div>
+        <input type="file" id="local-upload" accept="image/*" multiple style="display: block; width: 100%; margin: 20px 0; font-size: 16px;">
+        
+        <button id="start-btn" style="width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background-color: #aaa; color: white; border: none; border-radius: 8px; cursor: not-allowed;">Waiting for photos...</button>
+    </div>
 
-        <div style="background: #f4f4f9; padding: 20px; border-radius: 12px; border: 1px solid #ddd;">
-            <h3 style="margin-top: 0; color: #2a9d8f;">📸 Play Your Camera Roll</h3>
-            <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Select up to 100 photos directly from your device.</p>
+    <div id="game-screen" style="display: none; max-width: 400px; margin: 0 auto;">
+        <h1 style="text-align: center; color: #333;">Points: <span id="score">10</span></h1>
+        
+        <div style="background: white; padding: 15px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <img id="card-image" src="" style="width: 100%; height: 350px; object-fit: cover; border-radius: 12px; margin-bottom: 15px;">
             
-            <input type="file" id="local-upload" accept="image/*" multiple style="width: 100%; margin-bottom: 10px; font-size: 14px; padding: 10px; background: #fff; border-radius: 5px;">
-            
-            <p id="file-count-display" style="font-weight: bold; color: #2a9d8f; text-align: center; margin-bottom: 10px; display: none;">0 photos ready!</p>
-            
-            <button id="start-local-btn" style="width: 100%; padding: 15px; font-size: 16px; font-weight: bold; background-color: #2a9d8f; color: white; border: none; border-radius: 8px; cursor: pointer; opacity: 0.5;">Select Photos First</button>
+            <button class="choice-btn" data-cost="0" style="background:#e0e0e0; width:100%; padding:15px; margin-bottom:10px; border:none; border-radius:8px; font-weight:bold;">Skip (0)</button>
+            <button class="choice-btn" data-cost="1" style="background:#d4edda; width:100%; padding:15px; margin-bottom:10px; border:none; border-radius:8px; font-weight:bold;">It's okay (+1)</button>
+            <button class="choice-btn" data-cost="-2" style="background:#f8d7da; width:100%; padding:15px; margin-bottom:10px; border:none; border-radius:8px; font-weight:bold;">I want this (-2)</button>
+            <button class="choice-btn" data-cost="-9" style="background:#f5c6cb; width:100%; padding:15px; margin-bottom:10px; border:none; border-radius:8px; font-weight:bold;">This is elite (-9)</button>
         </div>
     </div>
 
-    
-    <script src="app.js"></script>
+    <script>
+        // THE ENGINE
+        let deck = [];
+        let currentIndex = 0;
+        let score = 10;
+
+        const uploadInput = document.getElementById('local-upload');
+        const startBtn = document.getElementById('start-btn');
+        const setupScreen = document.getElementById('setup-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const cardImg = document.getElementById('card-image');
+        const scoreDisplay = document.getElementById('score');
+
+        // 1. Listen for uploads
+        uploadInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                startBtn.style.backgroundColor = '#28a745';
+                startBtn.style.cursor = 'pointer';
+                startBtn.innerText = `Start Game (${files.length} photos)`;
+                
+                // Build the deck
+                deck = [];
+                for (let i = 0; i < files.length; i++) {
+                    deck.push(URL.createObjectURL(files[i]));
+                }
+            }
+        });
+
+        // 2. Start the game
+        startBtn.addEventListener('click', () => {
+            if (deck.length === 0) return;
+            setupScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+            loadCard();
+        });
+
+        // 3. Load an image
+        function loadCard() {
+            if (currentIndex >= deck.length) {
+                alert(`Deck complete! You survived with ${score} points.`);
+                location.reload();
+                return;
+            }
+            cardImg.src = deck[currentIndex];
+        }
+
+        // 4. Handle buttons
+        document.querySelectorAll('.choice-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                let cost = parseInt(e.target.getAttribute('data-cost'));
+                score += cost;
+                scoreDisplay.innerText = score;
+                
+                if (score <= 0) {
+                    alert("Bankrupt! You hit zero.");
+                    location.reload();
+                    return;
+                }
+                
+                currentIndex++;
+                loadCard();
+            });
+        });
+    </script>
 </body>
 </html>
