@@ -1,189 +1,145 @@
 // --- STATE VARIABLES ---
+let deck = [];
+let currentIndex = 0;
 let score = 10;
-let deck = []; 
-let currentCardIndex = 0;
 
-const choices = [
-    { text: "Skip (0)", cost: 0 },
-    { text: "It's okay (+1)", cost: 1 },
-    { text: "I want this (-2)", cost: -2 },
-    { text: "This is elite (-9)", cost: -9 },
-    { text: "My absolute favorite (-25)", cost: -25 }
-];
+// --- DOM ELEMENTS ---
+const setupScreen = document.getElementById('setup-screen');
+const gameScreen = document.getElementById('game-screen');
+const mediaContainer = document.getElementById('media-container');
+const scoreDisplay = document.getElementById('score-val');
 
-// --- HTML ELEMENTS ---
-const setupScreen = document.getElementById("setup-screen");
-const gameScreen = document.getElementById("game-screen");
+const redditInput = document.getElementById('subreddit-input');
+const startRedditBtn = document.getElementById('start-reddit-btn');
+const localUploadInput = document.getElementById('local-upload');
+const startLocalBtn = document.getElementById('start-local-btn');
 
-// Buttons & Inputs
-const startRedditBtn = document.getElementById("start-reddit-btn");
-const subredditInput = document.getElementById("subreddit-input");
-const startLocalBtn = document.getElementById("start-local-btn");
-const localUploadInput = document.getElementById("local-upload");
-
-const titleElement = document.getElementById("card-title");
-const imageContainer = document.getElementById("card-image-placeholder");
-const optionsContainer = document.getElementById("options-container");
-const scoreSpan = document.getElementById("score-val"); 
-const cardContainer = document.getElementById("card");
+// --- HELPER: SHUFFLE DECK ---
+function shuffleDeck(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
 
 // --- INITIALIZE GAME ---
 function startGame() {
+    if (deck.length === 0) return;
     score = 10;
-    scoreSpan.innerText = score;
-    currentCardIndex = 0;
-    setupScreen.style.display = "none";
-    gameScreen.style.display = "block";
+    scoreDisplay.innerText = score;
+    currentIndex = 0;
+    setupScreen.style.display = 'none';
+    gameScreen.style.display = 'block';
     renderCard();
 }
 
-// --- OPTION A: FETCH REDDIT (Top of the Month) ---
-async function fetchRedditTopMonth() {
-    let sub = subredditInput.value.split(',')[0].trim() || "pics";
+// --- OPTION A: REDDIT FETCH (Top 50 of Month + Proxy) ---
+startRedditBtn.addEventListener('click', async () => {
+    let sub = redditInput.value.split(',')[0].trim() || "pics";
     startRedditBtn.innerText = "Fetching...";
 
     try {
-        // Direct Reddit API fetch targeting the top 50 posts of the current month
-        const response = await fetch(`https://www.reddit.com/r/${sub}/top.json?t=month&limit=50`);
-        const json = await response.json();
+        // Wrap the Reddit URL in a proxy so it doesn't get blocked
+        const targetUrl = encodeURIComponent(`https://www.reddit.com/r/${sub}/top.json?t=month&limit=50`);
+        const proxyUrl = `https://api.allorigins.win/get?url=${targetUrl}`;
         
+        const response = await fetch(proxyUrl);
+        const proxyData = await response.json();
+        const json = JSON.parse(proxyData.contents);
+
         if (!json.data || !json.data.children) {
-            alert("Could not find that subreddit. Try another one!");
+            alert("Subreddit not found. Try 'luxurycars' or 'movieposters'.");
             startRedditBtn.innerText = "Fetch Reddit";
             return;
         }
 
-        const posts = json.data.children;
-        deck = []; 
-        
-        posts.forEach(post => {
+        deck = [];
+        json.data.children.forEach(post => {
             let url = post.data.url;
-            // Filter strictly for images, ignoring text posts and videos
-            if (url && (url.match(/\.(jpeg|jpg|gif|png)$/) != null)) {
+            // Does it look like a video or gif?
+            let isVideo = post.data.is_video || url.endsWith('.mp4') || url.endsWith('.webm');
+            let isImage = url.match(/\.(jpeg|jpg|gif|png)$/) != null;
+
+            if (isVideo || isImage) {
                 deck.push({
-                    title: post.data.title.substring(0, 50) + "...", 
-                    image: url
+                    url: url,
+                    type: isVideo ? 'video' : 'image'
                 });
             }
         });
 
         if (deck.length === 0) {
-            alert("No images found in that Subreddit this month! Try another one.");
+            alert("No images or videos found here this month!");
             startRedditBtn.innerText = "Fetch Reddit";
             return;
         }
 
+        shuffleDeck(deck); // Shuffle the Reddit posts so it's not strictly 1 to 50
         startGame();
 
     } catch (error) {
-        console.error("Reddit API Error:", error); 
-        alert("Reddit blocked the request or the API is down. Try playing with Local Photos instead!");
+        alert("Reddit proxy failed. Try again or use Local Upload.");
         startRedditBtn.innerText = "Fetch Reddit";
-    }
-}
-
-startRedditBtn.addEventListener("click", fetchRedditTopMonth);
-
-// --- OPTION B: PLAY LOCAL CAMERA ROLL ---
-const fileCountDisplay = document.getElementById("file-count-display");
-
-// Listen for when the user actually selects files
-localUploadInput.addEventListener("change", () => {
-    const fileCount = localUploadInput.files.length;
-    
-    if (fileCount > 0) {
-        fileCountDisplay.style.display = "block";
-        fileCountDisplay.innerText = `${fileCount} photos ready to play!`;
-        
-        // Activate the start button
-        startLocalBtn.style.opacity = "1";
-        startLocalBtn.innerText = "Start Local Game";
-    } else {
-        fileCountDisplay.style.display = "none";
-        startLocalBtn.style.opacity = "0.5";
-        startLocalBtn.innerText = "Select Photos First";
     }
 });
 
-startLocalBtn.addEventListener("click", () => {
+// --- OPTION B: LOCAL UPLOAD (Images + Videos) ---
+startLocalBtn.addEventListener('click', () => {
     const files = localUploadInput.files;
-    
-    // Safety check: Prevent starting if no files are chosen
-    if (files.length === 0) {
-        alert("Please tap 'Choose Files' and select some photos first!");
+    if (files.length < 3) {
+        alert("Please select at least 3 photos/videos to play!");
         return;
     }
 
     deck = [];
-    
-    // Loop through the uploaded files and create temporary game cards
     for (let i = 0; i < files.length; i++) {
         let file = files[i];
+        let isVideo = file.type.startsWith('video');
+        
         deck.push({
-            title: `Your Photo ${i + 1} of ${files.length}`, 
-            image: URL.createObjectURL(file) 
+            url: URL.createObjectURL(file), // Creates a safe local link
+            type: isVideo ? 'video' : 'image'
         });
     }
 
+    shuffleDeck(deck); // Randomize the camera roll!
     startGame();
 });
 
-
-// --- CORE GAME LOOP ---
-function handleChoice(cost) {
-    score += cost;
-    scoreSpan.innerText = score;
-
-    if (score <= 0) {
-        cardContainer.innerHTML = `<h2 style="color: red; text-align: center; padding: 20px;">BANKRUPT!</h2>
-                                   <p style="text-align: center;">You hit zero points.</p>
-                                   <button onclick="location.reload()" style="display:block; width:100%; padding:15px; background:#4a4e69; color:white; border-radius:8px; border:none; margin-top:20px; font-size: 18px; cursor:pointer;">Play Again</button>`;
+// --- RENDER CARD (Handles both Images & Videos) ---
+function renderCard() {
+    if (currentIndex >= deck.length) {
+        alert(`Deck complete! You survived with ${score} points.`);
+        location.reload();
         return;
     }
 
-    currentCardIndex++;
+    let cardData = deck[currentIndex];
 
-    if (currentCardIndex >= deck.length) {
-        cardContainer.innerHTML = `<h2 style="text-align: center; padding: 20px;">Deck Complete!</h2>
-                                   <p style="text-align: center;">You survived with ${score} points.</p>
-                                   <button onclick="location.reload()" style="display:block; width:100%; padding:15px; background:#4a4e69; color:white; border-radius:8px; border:none; margin-top:20px; font-size: 18px; cursor:pointer;">Play Again</button>`;
+    // Clear the container
+    mediaContainer.innerHTML = "";
+
+    if (cardData.type === 'video') {
+        mediaContainer.innerHTML = `<video src="${cardData.url}" autoplay loop muted playsinline style="width: 100%; height: 350px; object-fit: cover; border-radius: 12px; margin-bottom: 15px; background: #000;"></video>`;
     } else {
-        renderCard();
+        mediaContainer.innerHTML = `<img src="${cardData.url}" style="width: 100%; height: 350px; object-fit: cover; border-radius: 12px; margin-bottom: 15px;">`;
     }
 }
 
-// --- RENDER CARD ---
-function renderCard() {
-    if (!deck[currentCardIndex]) return; 
-
-    let cardData = deck[currentCardIndex];
-    titleElement.innerText = cardData.title;
-
-    imageContainer.innerHTML = `<img src="${cardData.image}" style="width: 100%; max-width: 400px; height: 300px; object-fit: cover; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">`;
-
-    optionsContainer.innerHTML = ""; 
-
-    choices.forEach(choice => {
-        let btn = document.createElement("button");
-        btn.innerText = choice.text;
+// --- BUTTON MATH & GAME LOOP ---
+document.querySelectorAll('.choice-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        let cost = parseInt(e.target.getAttribute('data-cost'));
+        score += cost;
+        scoreDisplay.innerText = score;
         
-        btn.style.display = "block";
-        btn.style.width = "100%";
-        btn.style.maxWidth = "400px";
-        btn.style.margin = "10px 0";
-        btn.style.padding = "15px";
-        btn.style.fontSize = "16px";
-        btn.style.fontWeight = "bold";
-        btn.style.cursor = "pointer";
-        btn.style.borderRadius = "8px";
-        btn.style.backgroundColor = choice.cost < 0 ? "#ffe3e3" : "#e3ffe6"; 
-        if (choice.cost === 0) btn.style.backgroundColor = "#f0f0f0"; 
-        btn.style.border = "1px solid #ccc";
+        if (score <= 0) {
+            alert("Bankrupt! You hit zero.");
+            location.reload();
+            return;
+        }
         
-        btn.addEventListener("click", () => {
-            handleChoice(choice.cost);
-        });
-
-        optionsContainer.appendChild(btn);
+        currentIndex++;
+        renderCard();
     });
-}
+});
