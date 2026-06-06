@@ -34,9 +34,9 @@ async function fetchRedditData(subredditQuery) {
     startBtn.innerText = "Fetching...";
 
     try {
-        // THE FIX: We wrap the Reddit URL in a free proxy to bypass the browser block
-        const targetUrl = encodeURIComponent(`https://www.reddit.com/r/${sub}/hot.json?limit=50`);
-        const proxyUrl = `https://api.allorigins.win/get?url=${targetUrl}`;
+        // The Alternative Proxy Fix
+const targetUrl = encodeURIComponent(`https://www.reddit.com/r/${sub}/hot.json?limit=50`);
+const proxyUrl = `https://corsproxy.io/?${targetUrl}`;
         
         const response = await fetch(proxyUrl);
         const proxyData = await response.json();
